@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" ng-app="nefarious-app">
+<head>
+  <meta charset="utf-8">
+  <title>Nefarious Flare</title>
+  <link rel="stylesheet" href="lib/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="css/index.css">
+  <script src="lib/angular/angular.min.js"></script>
+  <script src="lib/lodash/lodash.min.js"></script>
+  <script src="lib/restangular/restangular.min.js"></script>
+  <script src="lib/bootstrap/ui-bootstrap-tpls-0.13.3.min.js"></script>
+  <script src="lib/ace/ace.js"></script>
+  <script src="lib/jquery/jquery-2.1.4.min.js"></script>
+  <script src="lib/jquery-ui/jquery-ui.min.js"></script>
+  <script src="js/controllers.js"></script>
+  <script src="js/EditorService.js"></script>
+</head>
+<body ng-controller="StageOverviewController">
+
+  <div>
+    <div class="panel panel-default draggable stage" ng-repeat="stage in stages" ng-init="enableDragging()">
+      <div class="panel-heading">
+        <h3 class="panel-title">
+          {{stage.name}}
+          <img src="img/entypo/trash.svg" ng-click="delete(stage)" class="glyph-btn" style="float: right;"></img>
+          <img src="img/entypo/edit.svg" ng-click="open(stage)" class="glyph-btn" style="float: right;"></img>
+        </h3>
+      </div>
+      <div class="panel-body">
+        <!-- nothing, yet -->
+      </div>
+    </div>
+  </div>
+
+  <div ng-include="'editStage.html'"></div>
+
+</body>
+</html>
+</html>

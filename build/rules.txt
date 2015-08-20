@@ -1,0 +1,2 @@
+rule akka.** de.frosner.nf.akka.@1
+rule com.typesafe.** de.frosner.nf.typesafe.@1

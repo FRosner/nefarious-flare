@@ -1,0 +1,19 @@
+<script type="text/ng-template" id="editStage.html">
+  <div class="modal-header">
+    <h3 class="modal-title">Editing {{stage.name}}</h3>
+  </div>
+  <div class="modal-body">
+    <div class="form-group">
+      <label for="stageName">Name</label>
+      <input type="text" class="form-control" id="stageName" placeholder="Stage Name", value="{{stage.name}}">
+    </div>
+    <div class="form-group">
+      <label for="stageCode">Code</label>
+      <div id="stageCode" ng-controller="CodeEditorController" ng-init="setCode(stage.code)"></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-warning" type="button" ng-click="cancel()">Cancel</button>
+    <button class="btn btn-primary" type="button" ng-click="ok()">OK</button>
+  </div>
+</script>
