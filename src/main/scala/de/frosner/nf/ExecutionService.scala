@@ -1,11 +1,16 @@
 package de.frosner.nf
 
 import com.twitter.util.Eval
+import org.apache.log4j.Logger
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.{SQLContext, DataFrame, Row}
 
-object SparkRunner {
+import scala.collection.mutable
+
+object ExecutionService {
+
+  private val LOG = Logger.getLogger(this.getClass)
 
   private val conf = new SparkConf().setMaster("local[*]").setAppName("Test")
   private val sc = new SparkContext(conf)
@@ -17,15 +22,22 @@ object SparkRunner {
     sql.createDataFrame(rdd, schema)
   }
 
+  private val results: mutable.Map[Int, ExecutionResult] = mutable.HashMap.empty
+
   private val eval = new Eval(None)
 
   private def compile[T](code: String): T = eval[T](code)
 
   private def compileTransformation(code: String): DataFrame => DataFrame = compile(code)
 
-  def run(stage: Stage) = {
+  def run(stage: Stage): ExecutionResult = {
+    // TODO do the execution asynchronously
+    LOG.info(s"Starting execution of stage $stage")
     val stageTransformation = compileTransformation(stage.code)
-    stageTransformation(startDf).show()
+    val resultDf = stageTransformation(startDf)
+    val result = ExecutionResult(results.size, stage.id, resultDf.collect().mkString("\n"))
+    results(result.id) = result
+    result
   }
 
 }

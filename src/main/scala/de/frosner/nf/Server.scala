@@ -4,11 +4,9 @@ import java.awt.Desktop
 import java.net.URI
 
 import akka.actor.ActorSystem
-import com.twitter.util.Eval
 import com.typesafe.config.ConfigFactory
 import org.apache.log4j.Logger
-import org.apache.spark.sql.DataFrame
-import spray.http.{StatusCodes, HttpResponse}
+import spray.http.{StatusCodes}
 import spray.http.MediaTypes._
 import spray.json.{JsArray, JsNumber}
 import spray.routing.SimpleRoutingApp
@@ -20,9 +18,10 @@ import ExecutionContext.Implicits.global
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.collection.mutable
 
-import StageJsonProtocol._
+import StageJsonProtocol.stageFormat
+import ExecutionResultJsonProtocol.executionResultFormat
+import spray.json.DefaultJsonProtocol._
 import spray.httpx.SprayJsonSupport._
 
 import Server._
@@ -57,22 +56,23 @@ case class Server(interface: String = Server.DEFAULT_INTERFACE,
       innerRoute
     }
 
-  private var stages: mutable.Map[Int, Stage] = mutable.HashMap.empty ++ Map(
-    1 -> Stage(1, "Stage 1", "(in: org.apache.spark.sql.DataFrame) => in"),
-    2 -> Stage(2, "Stage 2", "(in: org.apache.spark.sql.DataFrame) => \n  in.select(in(\"col1\").as(\"renamed\"))")
-  )
-
   def start() = {
       if (password.isDefined) LOG.info(s"""Basic HTTP authentication enabled (password = ${password.get}). """ +
         s"""Password will be transmitted unencrypted. Do not reuse it somewhere else!""")
       val server = startServer(interface, port, actorName) {
-        path("execute") {
+        path(REST_API_PATH_PREFIX / EXECUTE_PATH) {
           withAuthentication {
-            complete {
-              val eval = new Eval(None)
-              val transformation = eval("import org.apache.spark.sql.DataFrame\n" +
-                "(in: DataFrame, out: DataFrame) => out").asInstanceOf[(DataFrame, DataFrame) => DataFrame]
-              transformation(null, null).toString
+            respondWithMediaType(`application/json`) {
+              post {
+                entity(as[Stage]) { stage =>
+                  complete {
+                    val result = StageService.getById(stage.id).map(ExecutionService.run(_)).get
+                    // TODO return URI to execution result resource instead
+                    println(result)
+                    result
+                  }
+                }
+              }
             }
           }
         } ~ path(REST_API_PATH_PREFIX / STAGES_PATH) {
@@ -80,7 +80,7 @@ case class Server(interface: String = Server.DEFAULT_INTERFACE,
             respondWithMediaType(`application/json`) {
               get {
                 complete {
-                  JsArray(stages.map{ case (id, stage) => JsNumber(id)}.toVector)
+                  JsArray(StageService.getAll.map{ case (id, stage) => JsNumber(id)}.toVector)
                 }
               }
             }
@@ -89,24 +89,22 @@ case class Server(interface: String = Server.DEFAULT_INTERFACE,
           withAuthentication {
             get {
               complete {
-                val stage = stages(stageId)
-                LOG.info("Serving stage " + stage)
+                val stage = StageService.getById(stageId).get
                 stage
               }
             } ~ put {
               entity(as[Stage]) { stage =>
                 complete {
-                  LOG.info("Updating stage " + stage)
-                  stages(stage.id) = stage
+                  StageService.updateById(stageId, stage)
                   StatusCodes.OK
                 }
               }
             } ~ delete {
               complete {
-                val stage = stages(stageId)
-                LOG.info("Removing stage " + stage)
-                stages -= stage.id
-                StatusCodes.OK
+                if (StageService.removeById(stageId))
+                  StatusCodes.OK
+                else
+                  StatusCodes.NotFound
               }
             }
           }
@@ -138,6 +136,7 @@ object Server {
   val REST_API_PATH_PREFIX = "rest"
   val STAGES_PATH = "stages"
   val WEBAPP_PATH_PREFIX = "webapp"
+  val EXECUTE_PATH = "executions"
 
   /**
    * Create a server instance bound to default port and interface, without opening a browser window.

@@ -44,6 +44,10 @@ app.controller('StageOverviewController', function ($scope, Restangular, $modal,
     stage.remove();
     delete $scope.stages[stage.id];
   };
+
+  $scope.execute = function(stage) {
+    Restangular.all('executions').post(stage);
+  }
 });
 
 app.controller('EditStageController', function ($scope, $modalInstance, stage, EditorService) {

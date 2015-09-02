@@ -7,5 +7,5 @@ case class Stage(id: Int, name: String, code: String) {
 }
 
 object StageJsonProtocol extends DefaultJsonProtocol {
-  implicit val format = jsonFormat3(Stage.apply)
+  implicit val stageFormat = jsonFormat3(Stage.apply)
 }
