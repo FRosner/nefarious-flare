@@ -3,8 +3,8 @@ package de.frosner.nf
 import com.twitter.util.Eval
 import org.apache.log4j.Logger
 import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.sql.{SQLContext, DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, SQLContext}
+import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
 
