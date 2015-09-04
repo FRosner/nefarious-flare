@@ -36,14 +36,43 @@ class RequestHandler(val password: Option[String]) extends HttpServiceActor {
   def receive = runRoute {
     path(REST_API_PATH_PREFIX / EXECUTE_PATH) {
       withAuthentication {
+        post {
+          entity(as[Stage]) { stage =>
+            complete {
+              val maybeResultId = StageService.getById(stage.id).map(ExecutionService.createFromStage(_)).get
+              // TODO return the URL to the new execution result endpoint
+              if (maybeResultId.isSuccess) {
+                maybeResultId.get.toString
+              } else {
+                maybeResultId.failed.get.toString
+              }
+            }
+          }
+        }
+      }
+    } ~ path(REST_API_PATH_PREFIX / EXECUTE_PATH / IntNumber) { executionId =>
+      withAuthentication {
         respondWithMediaType(`application/json`) {
-          post {
-            entity(as[Stage]) { stage =>
-              complete {
-                val result = StageService.getById(stage.id).map(ExecutionService.run(_)).get
-                // TODO return URI to execution result resource instead
-                println(result)
-                result
+          get {
+            complete {
+              val maybeExecutionResult = ExecutionService.getById(executionId)
+              if (maybeExecutionResult.isDefined) {
+                val maybeFinishedExecutionResult = maybeExecutionResult.get
+                if (maybeFinishedExecutionResult.isDefined) {
+                  val maybeSuccessfulExecutionResult = maybeFinishedExecutionResult.get
+                  if (maybeSuccessfulExecutionResult.isSuccess) {
+                    println(maybeSuccessfulExecutionResult.get)
+                    StatusCodes.OK
+                  } else {
+                    println(maybeSuccessfulExecutionResult.failed.get)
+                    StatusCodes.OK
+                  }
+                } else {
+                  println("Execution not finished, yet.")
+                  StatusCodes.OK
+                }
+              } else {
+                StatusCodes.NotFound
               }
             }
           }
@@ -75,7 +104,7 @@ class RequestHandler(val password: Option[String]) extends HttpServiceActor {
           }
         } ~ delete {
           complete {
-            if (StageService.removeById(stageId))
+            if (StageService.deleteById(stageId))
               StatusCodes.OK
             else
               StatusCodes.NotFound

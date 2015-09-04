@@ -8,6 +8,13 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.mutable
 
+import scala.concurrent.Await
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.util.Try
+
+import scala.concurrent.ExecutionContext.Implicits.global
+
 object ExecutionService {
 
   private val LOG = Logger.getLogger(this.getClass)
@@ -22,7 +29,7 @@ object ExecutionService {
     sql.createDataFrame(rdd, schema)
   }
 
-  private val results: mutable.Map[Int, ExecutionResult] = mutable.HashMap.empty
+  private val results: mutable.Map[Int, Option[Try[String]]] = mutable.HashMap.empty
 
   private val eval = new Eval(None)
 
@@ -30,14 +37,25 @@ object ExecutionService {
 
   private def compileTransformation(code: String): DataFrame => DataFrame = compile(code)
 
-  def run(stage: Stage): ExecutionResult = {
-    // TODO do the execution asynchronously
+  def init = {}
+
+  def createFromStage(stage: Stage): Try[Int] = {
+    // TODO do the execution asynchronously (by sending this stage to an actor)?
     LOG.info(s"Starting execution of stage $stage")
-    val stageTransformation = compileTransformation(stage.code)
-    val resultDf = stageTransformation(startDf)
-    val result = ExecutionResult(results.size, stage.id, resultDf.collect().mkString("\n"))
-    results(result.id) = result
-    result
+    val maybeStageTransformation = Try(compileTransformation(stage.code))
+    
+    maybeStageTransformation.map(t => {
+      val newResultId = results.size
+      results(newResultId) = None
+      val result = Future { t(startDf) }.onComplete{ df =>
+        results(newResultId) = Some(df.map(_.take(10).mkString("\n")))
+      }
+      newResultId
+    })
+  }
+
+  def getById(id: Int): Option[Option[Try[String]]] = {
+    results.get(id)
   }
 
 }

@@ -26,6 +26,8 @@ case class Server(interface: String = Server.DEFAULT_INTERFACE,
   private val actorName = "nf-server-actor"
 
   def start() = {
+    ExecutionService.init
+
     if (password.isDefined) LOG.info( s"""Basic HTTP authentication enabled (password = ${password.get}). """ +
       s"""Password will be transmitted unencrypted. Do not reuse it somewhere else!""")
 

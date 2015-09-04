@@ -24,7 +24,7 @@ object StageService {
     stages(id) = updated
   }
 
-  def removeById(id: Int): Boolean = {
+  def deleteById(id: Int): Boolean = {
     val maybeStage = stages.get(id)
     maybeStage.map(stage => {
       stages -= stage.id
